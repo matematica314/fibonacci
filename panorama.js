@@ -11,13 +11,14 @@ function initializeSky(){
 }
 try{initializeSky()}catch{gl=null}
 function loadSky(room){textureRoom=room;let rev=++textureRevision;let img=new Image();img.onload=()=>{if(rev!==textureRevision)return;if(gl){gl.texImage2D(gl.TEXTURE_2D,0,gl.RGB,gl.RGB,gl.UNSIGNED_BYTE,img);sky.style.opacity=1}draw()};img.src='f'+room+'.jpg';world.style.backgroundImage='url('+img.src+')';sky.style.opacity=0}
-function metrics(){let w=world.clientWidth,h=world.clientHeight,f=Math.max(w*.38,h*.59);return {w,h,f}}
+let viewScale = 1;
+function metrics(){let w=world.clientWidth,h=world.clientHeight,f=Math.max(w*.38,h*.59)*viewScale;return {w,h,f}}
 const maxElevation=70;
 const pitchMin=.5-maxElevation/180, pitchMax=.5+maxElevation/180;
 function flatView(){
  const {w,h}=metrics();
  // Zoom towards the poles just enough to keep the entire viewport on the panorama.
- const k=Math.max(w*1.7,h*2.6,h/Math.min(pitch,1-pitch));
+ const k=Math.max(w*1.7*viewScale,h*2.6*viewScale,h/Math.min(pitch,1-pitch));
  return {k,center:pitch};
 }
 function screenAt(u,v){const {w,h,f}=metrics();if(!gl){let {k,center}=flatView();return {x:w/2+(wrap(u-yaw+.5)-.5)*k,y:h/2+(v-center)*k/2,scale:k,visible:true}}
@@ -39,3 +40,23 @@ world.onpointerup=world.onpointercancel=finishGesture;
 $('left').onclick=()=>look(yaw-.09,pitch);$('right').onclick=()=>look(yaw+.09,pitch);
 onresize=draw;
 onkeydown=e=>{if($('game').hidden||$('modal').open||e.target.matches('input,select,textarea'))return;let v={ArrowLeft:[-.035,0],ArrowRight:[.035,0],ArrowUp:[0,-.03],ArrowDown:[0,.03]}[e.key];if(v){e.preventDefault();look(yaw+v[0],pitch+v[1])}};
+
+// A single control switches between the original and slightly wider field of view.
+const zoomControls = document.querySelector('#game .foot .controls');
+if (zoomControls) {
+  const zoomButton = document.createElement('button');
+  zoomButton.type = 'button';
+  zoomButton.textContent = '−';
+  zoomButton.title = 'Allontana leggermente la vista';
+  zoomButton.setAttribute('aria-label', zoomButton.title);
+  zoomButton.style.minWidth = '2.3em';
+  zoomButton.addEventListener('click', () => {
+    const wider = viewScale === 1;
+    viewScale = wider ? 0.88 : 1;
+    zoomButton.textContent = wider ? '+' : '−';
+    zoomButton.title = wider ? 'Ripristina la vista iniziale' : 'Allontana leggermente la vista';
+    zoomButton.setAttribute('aria-label', zoomButton.title);
+    draw();
+  });
+  zoomControls.append(zoomButton);
+}
