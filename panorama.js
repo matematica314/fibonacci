@@ -41,22 +41,40 @@ $('left').onclick=()=>look(yaw-.09,pitch);$('right').onclick=()=>look(yaw+.09,pi
 onresize=draw;
 onkeydown=e=>{if($('game').hidden||$('modal').open||e.target.matches('input,select,textarea'))return;let v={ArrowLeft:[-.035,0],ArrowRight:[.035,0],ArrowUp:[0,-.03],ArrowDown:[0,.03]}[e.key];if(v){e.preventDefault();look(yaw+v[0],pitch+v[1])}};
 
-// A single control switches between the original and slightly wider field of view.
+
 const zoomControls = document.querySelector('#game .foot .controls');
 if (zoomControls) {
-  const zoomButton = document.createElement('button');
-  zoomButton.type = 'button';
-  zoomButton.textContent = '−';
-  zoomButton.title = 'Allontana leggermente la vista';
-  zoomButton.setAttribute('aria-label', zoomButton.title);
-  zoomButton.style.minWidth = '2.3em';
-  zoomButton.addEventListener('click', () => {
-    const wider = viewScale === 1;
-    viewScale = wider ? 0.88 : 1;
-    zoomButton.textContent = wider ? '+' : '−';
-    zoomButton.title = wider ? 'Ripristina la vista iniziale' : 'Allontana leggermente la vista';
-    zoomButton.setAttribute('aria-label', zoomButton.title);
+  const minScale = 0.78;
+  const maxScale = 1.05;
+
+  function makeButton(symbol, label, step) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = symbol;
+    button.title = label;
+    button.setAttribute('aria-label', label);
+    button.addEventListener('click', () => setScale(viewScale + step));
+    zoomControls.append(button);
+    return button;
+  }
+
+  function setScale(value) {
+    const next = clamp(value, minScale, maxScale);
+    if (next === viewScale) return;
+    viewScale = next;
+    farther.disabled = next === minScale;
+    closer.disabled = next === maxScale;
     draw();
-  });
-  zoomControls.append(zoomButton);
+  }
+
+  const farther = makeButton('−', 'Allontana la vista', -0.05);
+  const closer = makeButton('+', 'Avvicina la vista', 0.05);
+
+  world.addEventListener('wheel', event => {
+    if (gesture || event.ctrlKey || event.metaKey || !event.deltaY) return;
+    event.preventDefault();
+    const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? world.clientHeight : 1;
+    const pixels = clamp(event.deltaY * unit, -100, 100);
+    setScale(viewScale - pixels * 0.0005);
+  }, {passive: false});
 }
